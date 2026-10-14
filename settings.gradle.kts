@@ -16,7 +16,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "example-mod"
+rootProject.name = "KScript"
 
 include("common")
 include("fabric")

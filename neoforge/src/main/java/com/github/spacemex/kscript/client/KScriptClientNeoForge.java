@@ -1,19 +1,19 @@
-package com.example.mod.client;
+package com.github.spacemex.kscript.client;
 
-import com.example.mod.ExampleMod;
+import com.github.spacemex.kscript.KScript;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 
-@Mod(value = ExampleMod.MOD_ID, dist = Dist.CLIENT)
-public final class ExampleModClientNeoForge {
+@Mod(value = KScript.MOD_ID, dist = Dist.CLIENT)
+public final class KScriptClientNeoForge {
 
-    public ExampleModClientNeoForge(IEventBus eventBus) {
+    public KScriptClientNeoForge(IEventBus eventBus) {
         eventBus.addListener(this::clientInitialization);
     }
 
     private void clientInitialization(FMLClientSetupEvent event) {
-        ExampleMod.initializeClientOnly();
+        KScript.initializeClientOnly();
     }
 }

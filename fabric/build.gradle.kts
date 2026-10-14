@@ -7,6 +7,8 @@ val fabricApiVersion = providers.gradleProperty("fabric_api_version").get()
 
 val architecturyApiVersion = providers.gradleProperty("architectury_api_version").get()
 
+val kotlinVersion = providers.gradleProperty("kotlin_version").get()
+
 architectury {
     platformSetupLoomIde()
     fabric()
@@ -42,7 +44,7 @@ configurations {
         extendsFrom(common, bundledLibraries)
     }
     named("developmentFabric") {
-        extendsFrom(common, bundledLibraries)
+        extendsFrom(common)
     }
 }
 
@@ -58,6 +60,9 @@ dependencies {
     "shadowBundle"(project(path = ":common", configuration = "transformProductionFabric")) {
         isTransitive = false
     }
+
+    "bundledLibraries"("org.jetbrains.kotlin:kotlin-scripting-jsr223:$kotlinVersion")
+    "bundledLibraries"("com.github.albfernandez:juniversalchardet:2.5.0")
 }
 
 tasks.processResources {
@@ -77,6 +82,14 @@ tasks.shadowJar {
         project.configurations.getByName("shadowBundle"),
         project.configurations.getByName("bundledLibraries")
     )
+
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+
+    mergeServiceFiles()
+
+    filesNotMatching("META-INF/services/**") {
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    }
 
     archiveClassifier.set("")
 }

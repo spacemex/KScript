@@ -1,23 +1,23 @@
 {
   "schemaVersion": 1,
-  "id": "example-mod",
+  "id": "kscript",
   "version": "${version}",
-  "name": "Example Mod",
-  "description": "",
+  "name": "KScript",
+  "description": "A powerful Kotlin scripting mod for Minecraft.",
   "authors": [
-    "Example User"
+    "Space_Mex"
   ],
   "license": "MIT",
   "environment": "*",
   "entrypoints": {
     "fabric-datagen": [
-      "com.example.mod.data.ExampleModDataGenerator"
+      "com.github.spacemex.kscript.data.KScriptDataGenerator"
     ],
     "main": [
-      "com.example.mod.ExampleModFabric"
+      "com.github.spacemex.kscript.KScriptFabric"
     ],
     "client": [
-      "com.example.mod.client.ExampleModFabricClient"
+      "com.github.spacemex.kscript.client.KScriptFabricClient"
     ]
   },
   "depends": {
