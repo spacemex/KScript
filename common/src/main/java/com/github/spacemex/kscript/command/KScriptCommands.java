@@ -20,8 +20,8 @@ public final class KScriptCommands {
                             .then(Commands.literal("server")
                                     .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                                     .executes(c -> reloadServer(c.getSource())))
-                            .then(Commands.literal("client")
-                                    .executes(c -> reloadClient(c.getSource())))
+//                            .then(Commands.literal("client")
+//                                    .executes(c -> reloadClient(c.getSource())))
                     )
             );
         });

@@ -4,7 +4,6 @@ import com.github.spacemex.kscript.KScript;
 import dev.architectury.event.events.common.LifecycleEvent;
 import dev.architectury.platform.Platform;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -44,7 +43,10 @@ public final class KScriptRuntime {
             return;
         }
 
+        ScriptEventRegistry.initialize();
+
         LifecycleEvent.SERVER_STARTED.register(s -> loadScripts(ScriptType.SERVER));
+        LifecycleEvent.SERVER_STOPPED.register(s -> ScriptEventRegistry.clearServerListeners());
         loadScripts(ScriptType.STARTUP);
     }
 
@@ -52,6 +54,6 @@ public final class KScriptRuntime {
         Path directory = type.resolve(SCRIPTS_ROOT);
 
         KScript.LOGGER.debug("Loading {} scripts from {}", type, directory);
-        return SCRIPT_MANAGER.loadDirectory(directory);
+        return SCRIPT_MANAGER.loadDirectory(directory, type);
     }
 }
