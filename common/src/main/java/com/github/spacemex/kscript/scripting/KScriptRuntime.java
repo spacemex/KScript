@@ -43,6 +43,8 @@ public final class KScriptRuntime {
             return;
         }
 
+        JavaScriptCompiler.validateDirectory(ScriptType.SERVER.resolve(SCRIPTS_ROOT));
+
         BuiltinEventBridges.initialize();
 
         LifecycleEvent.SERVER_STARTED.register(s -> loadScripts(ScriptType.SERVER));
