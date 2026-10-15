@@ -1,0 +1,9 @@
+{
+  "kscript.chat.reload.server.error.discovery_failed": "Failed to discover server scripts. Check logs.",
+  "kscript.chat.reload.server.error.some_failed": "Reload finished: %1$d loaded, %2$d failed. Check logs.",
+  "kscript.chat.reload.server.successful": "Successfully reloaded %1$d server script(s).",
+
+  "kscript.chat.reload.client.error.discovery_failed": "Failed to discover client scripts. Check logs.",
+  "kscript.chat.reload.client.error.some_failed": "Reload finished: %1$d loaded, %2$d failed. Check logs.",
+  "kscript.chat.reload.client.successful": "Successfully reloaded %1$d client script(s)."
+}

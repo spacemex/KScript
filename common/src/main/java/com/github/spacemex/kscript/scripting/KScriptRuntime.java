@@ -48,10 +48,10 @@ public final class KScriptRuntime {
         loadScripts(ScriptType.STARTUP);
     }
 
-    public static void loadScripts(ScriptType type) {
+    public static ScriptLoadResult loadScripts(ScriptType type) {
         Path directory = type.resolve(SCRIPTS_ROOT);
 
         KScript.LOGGER.debug("Loading {} scripts from {}", type, directory);
-        SCRIPT_MANAGER.loadDirectory(directory);
+        return SCRIPT_MANAGER.loadDirectory(directory);
     }
 }

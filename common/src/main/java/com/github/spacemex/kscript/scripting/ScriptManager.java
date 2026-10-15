@@ -23,7 +23,7 @@ public final class ScriptManager {
         this.engineManager = new ScriptEngineManager(ScriptManager.class.getClassLoader());
     }
 
-    public void loadDirectory(Path directory) {
+    public ScriptLoadResult loadDirectory(Path directory) {
         List<Path> scripts;
 
         try (Stream<Path> stream = Files.walk(directory)) {
@@ -33,12 +33,12 @@ public final class ScriptManager {
             ).toList();
         } catch (IOException | UncheckedIOException e) {
             KScript.LOGGER.error("Failed to discover scripts in {}", directory, e);
-            return;
+            return new ScriptLoadResult(0, 0, 0, true);
         }
 
         if (scripts.isEmpty()) {
             KScript.LOGGER.debug("No scripts found in {}", directory);
-            return;
+            return new ScriptLoadResult(0, 0, 0, false);
         }
 
         KScript.LOGGER.debug("Discovered {} kotlin script(s) in {}", scripts.size(), directory);
@@ -55,6 +55,7 @@ public final class ScriptManager {
         }
 
         KScript.LOGGER.debug("Script loading complete: {} loaded, {} failed", loaded, failed);
+        return new ScriptLoadResult(scripts.size(), loaded, failed, false);
     }
 
     private boolean executeScript(Path directory, Path script) {
