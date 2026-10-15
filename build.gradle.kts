@@ -1,7 +1,3 @@
-import org.gradle.api.JavaVersion
-import org.gradle.api.tasks.compile.JavaCompile
-import org.gradle.api.tasks.bundling.AbstractArchiveTask
-
 plugins {
     id("dev.architectury.loom-no-remap") version "1.17-SNAPSHOT" apply false
     id("architectury-plugin") version "3.5-SNAPSHOT"
@@ -55,4 +51,105 @@ subprojects {
     tasks.withType<AbstractArchiveTask>().configureEach {
         archiveVersion.set("")
     }
+
+
+    tasks.register("generateKScriptEditorWorkspace") {
+        group = "kscript"
+        description = "Generates a portable Kotlin editor workspace"
+
+        dependsOn(":common:jar")
+
+        doLast {
+            val workspace = layout.buildDirectory.dir("kscript/editor-workspace").get().asFile
+
+            val libs = workspace.resolve("libs")
+            libs.mkdirs()
+
+            libs.listFiles()?.filter { it.isFile && it.extension == "jar" }?.forEach { it.delete() }
+
+            val commonProject = project(":common")
+            val fabricProject = project(":fabric")
+
+            val commonJar = commonProject.tasks.named<Jar>("jar").get().archiveFile.get().asFile
+
+            val classpath = linkedSetOf<File>()
+            classpath.add(commonJar)
+
+            for (module in listOf(commonProject, fabricProject)) {
+                val configuration = module.configurations.getByName("compileClasspath")
+
+                classpath.addAll(configuration.resolve().filter { it.isFile && it.extension == "jar" })
+            }
+
+            classpath.forEachIndexed { index, jar ->
+                jar.copyTo(
+                    libs.resolve(
+                        "${index.toString().padStart(3, '0')}-${jar.name}"
+                    ), overwrite = true
+                )
+            }
+
+            workspace.resolve("settings.gradle.kts").writeText(
+                """
+            rootProject.name = "kscript-editor-workspace"
+            """.trimIndent()
+            )
+
+            val kotlinVersion = providers.gradleProperty("kotlin_version").get()
+
+            workspace.resolve("build.gradle.kts").writeText(
+                """
+            plugins {
+                kotlin("jvm") version "$kotlinVersion"
+            }
+
+            repositories {
+                mavenCentral()
+            }
+
+            dependencies {
+                compileOnly(
+                    fileTree("libs") {
+                        include("*.jar")
+                    }
+                )
+            }
+
+            kotlin {
+                jvmToolchain(25)
+            }
+            """.trimIndent()
+            )
+
+            val sources = workspace.resolve("src/main/kotlin")
+            sources.mkdirs()
+
+            val example = sources.resolve("KScriptExample.kt")
+
+            if (!example.exists()) {
+                example.writeText(
+                    """
+                import com.github.spacemex.kscript.api.ServerEvents
+
+                @Suppress("unused")
+                fun registerExampleHandlers() {
+                    ServerEvents.PLAYER_JOIN.listen { event ->
+                        val name: String = event.playerName
+                        println(name)
+                        event.sendMessage("Welcome!")
+                    }
+
+                    ServerEvents.PLAYER_QUIT.listen { event ->
+                        println(event.playerName)
+                    }
+                }
+                """.trimIndent()
+                )
+            }
+
+            logger.lifecycle("Generated KScript editor workspace: {}", workspace.absolutePath)
+            logger.lifecycle("Exported {} classpath JARs", classpath.size)
+        }
+    }
+
 }
