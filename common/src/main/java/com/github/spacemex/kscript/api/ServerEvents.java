@@ -11,4 +11,8 @@ public final class ServerEvents {
     public static void playerJoin(Consumer<PlayerJoinEvent> handler) {
         ScriptEventRegistry.registerPlayerJoin(handler);
     }
+
+    public static void playerQuit(Consumer<PlayerQuitEvent> handler) {
+        ScriptEventRegistry.registerPlayerQuit(handler);
+    }
 }
