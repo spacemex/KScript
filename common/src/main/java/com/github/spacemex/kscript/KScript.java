@@ -1,5 +1,6 @@
 package com.github.spacemex.kscript;
 
+import com.github.spacemex.kscript.client.KScriptClientHooks;
 import com.github.spacemex.kscript.scripting.KScriptRuntime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +17,7 @@ public final class KScript {
     }
 
     public static void initializeClientOnly() {
-        LOGGER.info("Hello Client!");
+        LOGGER.info("Initializing KScript client...");
+        KScriptClientHooks.initialize();
     }
 }
