@@ -1,36 +1,17 @@
 package com.github.spacemex.kscript.scripting;
 
 import com.github.spacemex.kscript.KScript;
-import com.github.spacemex.kscript.api.PlayerJoinEvent;
-import com.github.spacemex.kscript.api.PlayerQuitEvent;
-import dev.architectury.event.events.common.PlayerEvent;
-import net.minecraft.server.level.ServerPlayer;
+import com.github.spacemex.kscript.api.event.ScriptEvent;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.Consumer;
 
 public final class ScriptEventRegistry {
 
     private static final ThreadLocal<Registrations> CURRENT = new ThreadLocal<>();
 
-    private static volatile ActiveListeners activeListeners = ActiveListeners.EMPTY;
-    private static boolean initialized = false;
-
+    private static volatile Map<ScriptEvent<?>, List<ListenerEntry>> activeServerListeners = Map.of();
     private ScriptEventRegistry() {}
-
-    public static synchronized void initialize() {
-        if (initialized){
-            return;
-        }
-
-        PlayerEvent.PLAYER_JOIN.register(ScriptEventRegistry::handlePlayerJoin);
-        PlayerEvent.PLAYER_QUIT.register(ScriptEventRegistry::handlePlayerQuit);
-
-        initialized = true;
-    }
 
     public static void beginScript(String scriptName) {
         if (CURRENT.get() != null) {
@@ -55,78 +36,68 @@ public final class ScriptEventRegistry {
         CURRENT.remove();
     }
 
-    public static void registerPlayerJoin(Consumer<PlayerJoinEvent> listener) {
-        Objects.requireNonNull(listener);
-
-        Registrations registrations = CURRENT.get();
-
-        if (registrations == null) {
-            throw new IllegalStateException("Server events can only be registered while loading a server script");
-        }
-
-        registrations.playerJoinHandlers.add(listener);
-    }
-
-    public static void registerPlayerQuit(Consumer<PlayerQuitEvent> listener) {
-        Objects.requireNonNull(listener);
-
-        Registrations registrations = CURRENT.get();
-
-        if (registrations == null) {
-            throw new IllegalStateException("Server events can only be registered " + "while loading a server script");
-        }
-
-        registrations.playerQuitHandlers.add(listener);
-    }
-
     public static void replaceServerListeners(Map<String, Registrations> prepared) {
-        List<ListenerEntry> nextJoins = new ArrayList<>();
-        List<QuitListenerEntry> nextQuits = new ArrayList<>();
+        Map<ScriptEvent<?>, List<ListenerEntry>> next = new LinkedHashMap<>();
 
-        for (var entry : prepared.entrySet()) {
-            String scriptName = entry.getKey();
-            Registrations registrations = entry.getValue();
+        for (var scriptEntry : prepared.entrySet()) {
+            String scriptName = scriptEntry.getKey();
+            Registrations registrations = scriptEntry.getValue();
 
-            for (var listener : registrations.playerJoinHandlers) {
-                nextJoins.add(new ListenerEntry(scriptName, listener));
-            }
+            for (var eventEntry : registrations.eventHandlers.entrySet()) {
+                ScriptEvent<?> event = eventEntry.getKey();
 
-            for (var listener : registrations.playerQuitHandlers) {
-                nextQuits.add(new QuitListenerEntry(scriptName, listener));
+                List<ListenerEntry> listeners = next.computeIfAbsent(event, key -> new ArrayList<>());
+
+                for (Consumer<Object> callback : eventEntry.getValue()) {
+                    listeners.add(new ListenerEntry(scriptName, callback));
+                }
             }
         }
 
-        activeListeners = new ActiveListeners(List.copyOf(nextJoins), List.copyOf(nextQuits));
+        Map<ScriptEvent<?>, List<ListenerEntry>> snapshot = new LinkedHashMap<>();
 
-        KScript.LOGGER.debug("Activated {} player-join and {} player-quit handler(s)",
-                nextJoins.size(), nextQuits.size());
+        int totalHandlers = 0;
+
+        for (var entry : next.entrySet()) {
+            snapshot.put(entry.getKey(), List.copyOf(entry.getValue()));
+            totalHandlers += entry.getValue().size();
+        }
+
+        activeServerListeners = Map.copyOf(snapshot);
+        KScript.LOGGER.info("Activated {} handler(s) across {} event type(s)", totalHandlers, snapshot.size());
     }
 
     public static void clearServerListeners() {
-        activeListeners = ActiveListeners.EMPTY;
-        KScript.LOGGER.debug("Cleared server script event handlers");
+        activeServerListeners = Map.of();
+        KScript.LOGGER.debug("Cleared all server script event handlers");
     }
 
-    private static void handlePlayerJoin(ServerPlayer player) {
-        PlayerJoinEvent event = new PlayerJoinEvent(player);
+    public static <T> void register(ScriptEvent<T> event, Consumer<T> listener) {
+        Objects.requireNonNull(event);
+        Objects.requireNonNull(listener);
 
-        for (ListenerEntry entry : activeListeners.playerJoins()) {
-            try {
-                entry.listener().accept(event);
-            } catch (RuntimeException | LinkageError e) {
-                KScript.LOGGER.error("Player-join handler failed in script {}", entry.scriptName(), e);
-            }
+        Registrations registrations = CURRENT.get();
+
+        if (registrations == null) {
+            throw new IllegalStateException("Events can only be registered while " + "loading a server script");
         }
+
+        registrations.eventHandlers.computeIfAbsent(event, key -> new ArrayList<>())
+                .add(payload -> listener.accept(event.payloadType().cast(payload)));
     }
 
-    private static void handlePlayerQuit(ServerPlayer player) {
-        PlayerQuitEvent event = new PlayerQuitEvent(player);
+    public static <T> void dispatch(ScriptEvent<T> event, T payload) {
+        List<ListenerEntry> listeners = activeServerListeners.get(event);
 
-        for (QuitListenerEntry entry : activeListeners.playerQuits()) {
+        if (listeners == null) {
+            return;
+        }
+
+        for (ListenerEntry entry : listeners) {
             try {
-                entry.listener().accept(event);
+                entry.handler().accept(payload);
             } catch (RuntimeException | LinkageError e) {
-                KScript.LOGGER.error("Player-quit handler failed in script {}", entry.scriptName(), e);
+                KScript.LOGGER.error("Event {} failed in script {}", event.id(), entry.scriptName(), e);
             }
         }
     }
@@ -135,17 +106,12 @@ public final class ScriptEventRegistry {
 
         private final String scriptName;
 
-        private final List<Consumer<PlayerJoinEvent>> playerJoinHandlers = new ArrayList<>();
-        private final List<Consumer<PlayerQuitEvent>> playerQuitHandlers = new ArrayList<>();
+        private final Map<ScriptEvent<?>, List<Consumer<Object>>> eventHandlers = new LinkedHashMap<>();
 
         private Registrations(String scriptName) {
             this.scriptName = scriptName;
         }
     }
 
-    private record ListenerEntry(String scriptName, Consumer<PlayerJoinEvent> listener) {}
-    private record QuitListenerEntry(String scriptName, Consumer<PlayerQuitEvent> listener) {}
-    private record ActiveListeners(List<ListenerEntry> playerJoins, List<QuitListenerEntry> playerQuits) {
-        private static final ActiveListeners EMPTY = new ActiveListeners(List.of(), List.of());
-    }
+    private record ListenerEntry(String scriptName, Consumer<Object> handler) {}
 }

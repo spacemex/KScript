@@ -43,7 +43,7 @@ public final class KScriptRuntime {
             return;
         }
 
-        ScriptEventRegistry.initialize();
+        BuiltinEventBridges.initialize();
 
         LifecycleEvent.SERVER_STARTED.register(s -> loadScripts(ScriptType.SERVER));
         LifecycleEvent.SERVER_STOPPED.register(s -> ScriptEventRegistry.clearServerListeners());
